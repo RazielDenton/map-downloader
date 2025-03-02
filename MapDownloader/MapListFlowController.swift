@@ -19,6 +19,9 @@ final class MapListFlowController: UIViewController {
         childNavigationController.setViewControllers([mapListViewController], animated: false)
         setupNavigationBar()
     }
+}
+
+private extension MapListFlowController {
 
     func addChildNavigationController() {
         addChild(childNavigationController)
