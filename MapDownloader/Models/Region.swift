@@ -5,11 +5,39 @@
 //  Created by Viacheslav on 02.03.2025.
 //
 
-struct Region: Hashable, Comparable {
+import Foundation
+
+final class Region: Hashable, Comparable {
 
     let name: String
-    var subregions: [Region] = []
+    var subregions: [Region]
+    var mapDownloadStatus: MapDownloadStatus {
+        didSet {
+            statusHandler?(mapDownloadStatus)
+        }
+    }
+    var statusHandler: ((MapDownloadStatus) -> Void)?
+
+    init(name: String, subregions: [Region] = [], mapDownloadStatus: MapDownloadStatus = .available) {
+        self.name = name
+        self.subregions = subregions
+        self.mapDownloadStatus = mapDownloadStatus
+    }
 }
+
+// MARK: - Types
+
+extension Region {
+
+    enum MapDownloadStatus {
+        case available
+        case pending
+        case downloading(Double)
+        case downloaded
+    }
+}
+
+// MARK: - Protocols
 
 extension Region {
 
@@ -20,6 +48,10 @@ extension Region {
     }
 
     // MARK: - Comparable
+
+    static func == (lhs: Region, rhs: Region) -> Bool {
+        lhs.name == rhs.name
+    }
 
     static func < (lhs: Region, rhs: Region) -> Bool {
         lhs.name < rhs.name

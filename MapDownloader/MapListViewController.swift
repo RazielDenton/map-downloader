@@ -13,8 +13,9 @@ private extension CGFloat {
 
 final class MapListViewController: UIViewController {
 
+    private let mapsController: MapsController = .init()
     private let tableView: UITableView = .init()
-    private lazy var dataSource = makeDataSource()
+    private lazy var dataSource: UITableViewDiffableDataSource<Section, Region> = makeDataSource()
 
     // MARK: - LifeCycle
 
@@ -37,6 +38,7 @@ private extension MapListViewController {
         tableView.rowHeight = UITableView.automaticDimension
         tableView.register(MapRegionCell.self, forCellReuseIdentifier: MapRegionCell.reuseIdentifier)
         tableView.dataSource = dataSource
+        tableView.delegate = self
 
         view.addSubview(tableView)
         tableView.translatesAutoresizingMaskIntoConstraints = false
@@ -52,12 +54,16 @@ private extension MapListViewController {
     func makeDataSource() -> UITableViewDiffableDataSource<Section, Region> {
         RegionDiffableDataSource(
             tableView: tableView,
-            cellProvider: { tableView, indexPath, region in
+            cellProvider: { [weak self] tableView, indexPath, region in
                 let cell = tableView.dequeueReusableCell(
                     withIdentifier: MapRegionCell.reuseIdentifier,
                     for: indexPath
                 ) as? MapRegionCell
-                cell?.configure(with: region)
+                cell?.configure(with: region, onButtonTap: { [weak self] in
+                    Task {
+                        await self?.mapsController.toggleDownload(for: region)
+                    }
+                })
 
                 return cell
             }
@@ -83,5 +89,17 @@ private extension MapListViewController {
         snapshot.appendSections([europeContinentSection])
         snapshot.appendItems(continent.subregions, toSection: europeContinentSection)
         dataSource.apply(snapshot, animatingDifferences: animate)
+    }
+}
+
+// MARK: - UITableViewDelegate
+
+extension MapListViewController: UITableViewDelegate {
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+
+        guard let region = dataSource.itemIdentifier(for: indexPath), !region.subregions.isEmpty else { return }
+        print("Let's go to the \(region.name)")
     }
 }
