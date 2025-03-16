@@ -10,7 +10,8 @@ import UIKit
 final class MapListFlowController: UIViewController {
 
     private let childNavigationController: UINavigationController = .init()
-    private let mapListViewController: MapListViewController = .init()
+    private let mapsController: MapsController = .init()
+    private lazy var mapListViewController: MapListViewController = createMapListViewController()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -22,6 +23,22 @@ final class MapListFlowController: UIViewController {
 }
 
 private extension MapListFlowController {
+
+    func createMapListViewController() -> MapListViewController {
+        MapListViewController(region: nil, mapsController: mapsController) { [weak self] region in
+            self?.showSubregions(of: region)
+        }
+    }
+
+    func showSubregions(of region: Region) {
+        let mapListViewController = MapListViewController(
+            region: region,
+            mapsController: mapsController
+        ) { [weak self] region in
+            self?.showSubregions(of: region)
+        }
+        childNavigationController.pushViewController(mapListViewController, animated: true)
+    }
 
     func addChildNavigationController() {
         addChild(childNavigationController)
@@ -36,6 +53,7 @@ private extension MapListFlowController {
         appearance.backgroundColor = .navigationBar
         appearance.titleTextAttributes = [.foregroundColor: UIColor.white]
 
+        childNavigationController.navigationBar.tintColor = .white
         childNavigationController.navigationBar.standardAppearance = appearance
         childNavigationController.navigationBar.compactAppearance = appearance
         childNavigationController.navigationBar.scrollEdgeAppearance = appearance

@@ -46,7 +46,7 @@ extension RegionParser: XMLParserDelegate {
         if elementName == "region" {
             guard let completedRegion = regionStack.popLast() else { return }
 
-            if var parentRegion = regionStack.last {
+            if let parentRegion = regionStack.last {
                 parentRegion.subregions.append(completedRegion)
                 regionStack[regionStack.count - 1] = parentRegion
             } else {

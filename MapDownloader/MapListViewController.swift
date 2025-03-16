@@ -13,19 +13,39 @@ private extension CGFloat {
 
 final class MapListViewController: UIViewController {
 
-    private let mapsController: MapsController = .init()
+    private let region: Region?
+    private weak var mapsController: MapsController?
     private let tableView: UITableView = .init()
     private lazy var dataSource: UITableViewDiffableDataSource<Section, Region> = makeDataSource()
 
+    private var onCellTap: ((Region) -> Void)?
+
     // MARK: - LifeCycle
+
+    init(region: Region?, mapsController: MapsController?, onCellTap: ((Region) -> Void)?) {
+        self.region = region
+        self.mapsController = mapsController
+        self.onCellTap = onCellTap
+
+        super.init(nibName: nil, bundle: nil)
+
+        title = region == nil ? "Download Maps" : region?.name.capitalized
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        title = "Download Maps"
-
         setupTableView()
-        loadMaps()
+
+        if let region {
+            update(with: Region(name: "Regions", subregions: region.subregions))
+        } else {
+            loadMaps()
+        }
     }
 }
 
@@ -61,7 +81,7 @@ private extension MapListViewController {
                 ) as? MapRegionCell
                 cell?.configure(with: region, onButtonTap: { [weak self] in
                     Task {
-                        await self?.mapsController.toggleDownload(for: region)
+                        await self?.mapsController?.toggleDownload(for: region)
                     }
                 })
 
@@ -100,6 +120,7 @@ extension MapListViewController: UITableViewDelegate {
         tableView.deselectRow(at: indexPath, animated: true)
 
         guard let region = dataSource.itemIdentifier(for: indexPath), !region.subregions.isEmpty else { return }
-        print("Let's go to the \(region.name)")
+
+        onCellTap?(region)
     }
 }

@@ -9,6 +9,7 @@ import UIKit
 
 private extension CGFloat {
     static let layoutMargin: CGFloat = 20
+    static let imagePadding: CGFloat = 9
     static let textPadding: CGFloat = 16
     static let stackViewSpacing: CGFloat = 5
     static let downloadButtonSize: CGFloat = 44
@@ -131,6 +132,8 @@ private extension MapRegionCell {
 
         NSLayoutConstraint.activate([
             mapIndicator.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: .layoutMargin),
+            mapIndicator.topAnchor.constraint(equalTo: contentView.topAnchor, constant: .imagePadding),
+            mapIndicator.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -.imagePadding),
             mapIndicator.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
 
             verticalStack.leadingAnchor.constraint(equalTo: mapIndicator.trailingAnchor, constant: .textPadding),
