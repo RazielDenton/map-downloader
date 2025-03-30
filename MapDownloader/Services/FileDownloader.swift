@@ -20,27 +20,30 @@ final class FileDownloader: NSObject {
         super.init()
     }
 
+    // MARK: - Types
+
+    enum FileDownloaderError: Error {
+        case unknown
+        case downloadCanceled
+    }
+
     // MARK: - Public
 
     var backgroundURLSessionCompletion: (() -> Void)?
 
-    func downloadMap(from url: URL, progressHandler: ((Double) -> Void)?) async throws {
+    func downloadMap(with urlRequest: URLRequest, progressHandler: ((Double) -> Void)?) async throws {
         self.progressHandler = progressHandler
 
         try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
-            downloadTask = session.downloadTask(with: url)
+            downloadTask = session.downloadTask(with: urlRequest)
             downloadTask?.resume()
         }
     }
 
     func cancelDownload() {
         downloadTask?.cancel()
-        continuation?.resume(throwing: NSError(
-            domain: "FileDownloader",
-            code: -999,
-            userInfo: [NSLocalizedDescriptionKey: "Download canceled"]
-        ))
+        continuation?.resume(throwing: FileDownloaderError.downloadCanceled)
         cleanup()
     }
 }
@@ -109,11 +112,7 @@ extension FileDownloader: URLSessionDownloadDelegate {
             return
         }
 
-        continuation?.resume(throwing: error ?? NSError(
-            domain: "FileDownloader",
-            code: -1,
-            userInfo: [NSLocalizedDescriptionKey: "Unknown error"]
-        ))
+        continuation?.resume(throwing: error ?? FileDownloaderError.unknown)
     }
 
     func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {

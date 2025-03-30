@@ -89,10 +89,11 @@ private extension MapsController {
     func download(_ region: Region) async {
         do {
             print("Downloading: \(region.name)")
-
-            let fileURL = URL(string: "https://download.geofabrik.de/europe/ireland-and-northern-ireland-latest.osm.pbf")!
-
-            try await fileDownloader.downloadMap(from: fileURL) { [weak region] progress in
+            let request = URLRequest(
+                path: "download",
+                queryItemsParameters: ["standard": "yes", "file": region.fileName]
+            )
+            try await fileDownloader.downloadMap(with: request) { [weak region] progress in
                 print("Download progress: \(Int(progress * 100))%")
                 if let region {
                     region.mapDownloadStatus = .downloading(progress)

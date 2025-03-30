@@ -97,16 +97,16 @@ private extension MapListViewController {
     func loadMaps() {
         Task { @MainActor in
             if let region = await mapsController.loadMaps() {
-                update(with: region)
+                update(with: region, animate: false)
             }
         }
     }
 
     func update(with continent: Region, animate: Bool = true) {
         var snapshot = NSDiffableDataSourceSnapshot<Section, Region>()
-        let europeContinentSection = Section(continent: continent.name)
-        snapshot.appendSections([europeContinentSection])
-        snapshot.appendItems(continent.subregions, toSection: europeContinentSection)
+        let continentSection = Section(continent: continent.name)
+        snapshot.appendSections([continentSection])
+        snapshot.appendItems(continent.subregions, toSection: continentSection)
         dataSource.apply(snapshot, animatingDifferences: animate)
     }
 }

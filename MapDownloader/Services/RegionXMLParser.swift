@@ -10,7 +10,6 @@ import Foundation
 final class RegionParser: NSObject {
 
     private var regions: [Region] = []
-    private var currentRegion: Region?
     private var regionStack: [Region] = []
 
     func parseXML(data: Data) -> [Region]? {
@@ -32,10 +31,20 @@ extension RegionParser: XMLParserDelegate {
         qualifiedName qName: String?,
         attributes attributeDict: [String: String] = [:]
     ) {
-        if elementName == "region", let name = attributeDict["name"] {
-            let newRegion = Region(name: name)
-            regionStack.append(newRegion)
+        guard elementName == "region", let regionName = attributeDict["name"] else { return }
+
+        var downloadPrefix: String
+        switch regionStack.count {
+        case 1:
+            downloadPrefix = regionName
+        default:
+            downloadPrefix = (regionStack.last?.downloadPrefix ?? "") + "_" + regionName
         }
+        let firstLetter = downloadPrefix.prefix(1).capitalized
+        let remainingLetters = downloadPrefix.dropFirst()
+        downloadPrefix = firstLetter + remainingLetters
+
+        regionStack.append(.init(name: regionName, downloadPrefix: downloadPrefix, subregions: []))
     }
 
     func parser(
@@ -44,15 +53,13 @@ extension RegionParser: XMLParserDelegate {
         namespaceURI: String?,
         qualifiedName qName: String?
     ) {
-        if elementName == "region" {
-            guard let completedRegion = regionStack.popLast() else { return }
+        guard elementName == "region", let completedRegion = regionStack.popLast() else { return }
 
-            if let parentRegion = regionStack.last {
-                parentRegion.subregions.append(completedRegion)
-                regionStack[regionStack.count - 1] = parentRegion
-            } else {
-                regions.append(completedRegion)
-            }
+        if let parentRegion = regionStack.last {
+            parentRegion.subregions.append(completedRegion)
+            regionStack[regionStack.count - 1] = parentRegion
+        } else {
+            regions.append(completedRegion)
         }
     }
 }
