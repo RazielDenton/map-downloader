@@ -9,13 +9,14 @@ import Foundation
 
 final class RegionParser: NSObject {
 
-    var regions: [Region] = []
-    var currentRegion: Region?
-    var regionStack: [Region] = []
+    private var regions: [Region] = []
+    private var currentRegion: Region?
+    private var regionStack: [Region] = []
 
     func parseXML(data: Data) -> [Region]? {
         let parser = XMLParser(data: data)
         parser.delegate = self
+
         return parser.parse() ? regions : nil
     }
 }
@@ -29,7 +30,7 @@ extension RegionParser: XMLParserDelegate {
         didStartElement elementName: String,
         namespaceURI: String?,
         qualifiedName qName: String?,
-        attributes attributeDict: [String : String] = [:]
+        attributes attributeDict: [String: String] = [:]
     ) {
         if elementName == "region", let name = attributeDict["name"] {
             let newRegion = Region(name: name)

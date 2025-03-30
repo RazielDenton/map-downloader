@@ -9,9 +9,19 @@ import Foundation
 
 actor MapsController {
 
+    private let fileDownloader: FileDownloader
     private var regionsToDownload: [Region] = []
     private var currentDownloadTask: Task<Void, any Error>?
     private var isDownloading = false
+
+    init(fileDownloader: FileDownloader = .shared) {
+        self.fileDownloader = fileDownloader
+    }
+}
+
+// MARK: - Public
+
+extension MapsController {
 
     func toggleDownload(for region: Region) {
         switch region.mapDownloadStatus {
@@ -22,6 +32,21 @@ actor MapsController {
         case .downloaded:
             break
         }
+    }
+
+    func loadMaps() async -> Region? {
+        let parser = RegionParser()
+
+        guard
+            let path = Bundle.main.url(forResource: "regions", withExtension: "xml"),
+            let data = try? Data(contentsOf: path),
+            let regions = parser.parseXML(data: data),
+            let continent = regions.first
+        else { return nil }
+
+        let filteredRegions: [Region] = continent.subregions.sorted(by: <)
+
+        return Region(name: continent.name, subregions: filteredRegions)
     }
 }
 
@@ -37,6 +62,7 @@ private extension MapsController {
 
     func cancel(_ region: Region) {
         if case .downloading = region.mapDownloadStatus {
+            fileDownloader.cancelDownload()
             currentDownloadTask?.cancel()
             isDownloading = false
             processQueue()
@@ -63,17 +89,16 @@ private extension MapsController {
     func download(_ region: Region) async {
         do {
             print("Downloading: \(region.name)")
-            region.mapDownloadStatus = .downloading(0)
-            try await Task.sleep(nanoseconds: 1_000_000_000)
-            region.mapDownloadStatus = .downloading(0.1)
-            try await Task.sleep(nanoseconds: 1_000_000_000)
-            region.mapDownloadStatus = .downloading(0.25)
-            try await Task.sleep(nanoseconds: 1_000_000_000)
-            region.mapDownloadStatus = .downloading(0.5)
-            try await Task.sleep(nanoseconds: 1_000_000_000)
-            region.mapDownloadStatus = .downloading(0.75)
-            try await Task.sleep(nanoseconds: 1_000_000_000)
-            region.mapDownloadStatus = .downloading(1)
+
+            let fileURL = URL(string: "https://download.geofabrik.de/europe/ireland-and-northern-ireland-latest.osm.pbf")!
+
+            try await fileDownloader.downloadMap(from: fileURL) { [weak region] progress in
+                print("Download progress: \(Int(progress * 100))%")
+                if let region {
+                    region.mapDownloadStatus = .downloading(progress)
+                }
+            }
+            try Task.checkCancellation()
             print("Finished: \(region.name)")
             region.mapDownloadStatus = .downloaded
         } catch {

@@ -13,23 +13,22 @@ private extension CGFloat {
 
 final class MapListViewController: UIViewController {
 
-    private let region: Region?
-    private weak var mapsController: MapsController?
     private let tableView: UITableView = .init()
     private lazy var dataSource: UITableViewDiffableDataSource<Section, Region> = makeDataSource()
+
+    private let region: Region?
+    private let mapsController: MapsController
 
     private var onCellTap: ((Region) -> Void)?
 
     // MARK: - LifeCycle
 
-    init(region: Region?, mapsController: MapsController?, onCellTap: ((Region) -> Void)?) {
+    init(region: Region?, mapsController: MapsController, onCellTap: ((Region) -> Void)?) {
         self.region = region
         self.mapsController = mapsController
         self.onCellTap = onCellTap
 
         super.init(nibName: nil, bundle: nil)
-
-        title = region == nil ? "Download Maps" : region?.name.capitalized
     }
 
     required init?(coder: NSCoder) {
@@ -47,6 +46,12 @@ final class MapListViewController: UIViewController {
             loadMaps()
         }
     }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+
+        tableView.contentInset.bottom = view.safeAreaInsets.bottom
+    }
 }
 
 // MARK: - Private
@@ -62,12 +67,11 @@ private extension MapListViewController {
 
         view.addSubview(tableView)
         tableView.translatesAutoresizingMaskIntoConstraints = false
-
         NSLayoutConstraint.activate([
             tableView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
 
@@ -79,9 +83,9 @@ private extension MapListViewController {
                     withIdentifier: MapRegionCell.reuseIdentifier,
                     for: indexPath
                 ) as? MapRegionCell
-                cell?.configure(with: region, onButtonTap: { [weak self] in
+                cell?.configure(with: region, onButtonTap: { [unowned self] in
                     Task {
-                        await self?.mapsController?.toggleDownload(for: region)
+                        await self?.mapsController.toggleDownload(for: region)
                     }
                 })
 
@@ -91,15 +95,10 @@ private extension MapListViewController {
     }
 
     func loadMaps() {
-        guard
-            let path = Bundle.main.url(forResource: "regions", withExtension: "xml"),
-            let data = try? Data(contentsOf: path)
-        else { return }
-
-        let parser = RegionParser()
-        if let regions = parser.parseXML(data: data), let continent = regions.first {
-            let filteredRegions: [Region] = continent.subregions.sorted(by: <)
-            update(with: Region(name: continent.name, subregions: filteredRegions))
+        Task { @MainActor in
+            if let region = await mapsController.loadMaps() {
+                update(with: region)
+            }
         }
     }
 
