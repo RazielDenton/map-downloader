@@ -13,6 +13,7 @@ actor MapsController {
     private var regionsToDownload: [Region] = []
     private var currentDownloadTask: Task<Void, any Error>?
     private var isDownloading = false
+    private var onMapDownloadFinished: (() -> Void)?
 
     init(fileDownloader: FileDownloader = .shared) {
         self.fileDownloader = fileDownloader
@@ -48,6 +49,10 @@ extension MapsController {
 
         return Region(name: continent.name, subregions: filteredRegions)
     }
+
+    func setOnMapDownloadFinished(_ completionHandler: (() -> Void)?) {
+        onMapDownloadFinished = completionHandler
+    }
 }
 
 // MARK: - Private
@@ -82,6 +87,7 @@ private extension MapsController {
             await download(nextRegion)
             try Task.checkCancellation()
             isDownloading = false
+            onMapDownloadFinished?()
             processQueue()
         }
     }

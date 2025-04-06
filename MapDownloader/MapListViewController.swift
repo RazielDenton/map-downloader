@@ -16,9 +16,9 @@ final class MapListViewController: UIViewController {
     private let tableView: UITableView = .init()
     private lazy var dataSource: UITableViewDiffableDataSource<Section, Region> = makeDataSource()
 
-    private let region: Region?
     private let mapsController: MapsController
 
+    private let region: Region?
     private var onCellTap: ((Region) -> Void)?
 
     // MARK: - LifeCycle
@@ -41,7 +41,7 @@ final class MapListViewController: UIViewController {
         setupTableView()
 
         if let region {
-            update(with: Region(name: "Regions", subregions: region.subregions))
+            update(with: Region(name: String(localized: "Regions"), subregions: region.subregions))
         } else {
             loadMaps()
         }
@@ -59,6 +59,7 @@ final class MapListViewController: UIViewController {
 private extension MapListViewController {
 
     func setupTableView() {
+        tableView.backgroundColor = .background
         tableView.estimatedRowHeight = .tableViewRowHeight
         tableView.rowHeight = UITableView.automaticDimension
         tableView.register(MapRegionCell.self, forCellReuseIdentifier: MapRegionCell.reuseIdentifier)

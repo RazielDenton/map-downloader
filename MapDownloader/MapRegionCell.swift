@@ -103,6 +103,8 @@ private extension MapRegionCell {
     }
 
     func setupViews() {
+        backgroundColor = .cellBackground
+
         mapNameLabel.font = .preferredFont(forTextStyle: .body)
         mapNameLabel.adjustsFontForContentSizeCategory = true
 
