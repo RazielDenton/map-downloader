@@ -11,12 +11,13 @@ final class RegionParser: NSObject {
 
     private var regions: [Region] = []
     private var regionStack: [Region] = []
+    private var regionsByDownloadPrefix: [String: Region] = [:]
 
-    func parseXML(data: Data) -> [Region]? {
+    func parseXML(data: Data) -> ([Region], [String: Region])? {
         let parser = XMLParser(data: data)
         parser.delegate = self
 
-        return parser.parse() ? regions : nil
+        return parser.parse() ? (regions, regionsByDownloadPrefix) : nil
     }
 }
 
@@ -44,7 +45,9 @@ extension RegionParser: XMLParserDelegate {
         let remainingLetters = downloadPrefix.dropFirst()
         downloadPrefix = firstLetter + remainingLetters
 
-        regionStack.append(.init(name: regionName, downloadPrefix: downloadPrefix, subregions: []))
+        let newRegion = Region(name: regionName, downloadPrefix: downloadPrefix)
+        regionStack.append(newRegion)
+        regionsByDownloadPrefix[downloadPrefix] = newRegion
     }
 
     func parser(

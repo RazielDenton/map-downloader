@@ -12,7 +12,6 @@ final class Region: Hashable, Comparable {
     let name: String
     var subregions: [Region]
     let downloadPrefix: String
-    let downloadSuffix: String = "_europe_2.obf.zip"
     var mapDownloadStatus: MapDownloadStatus {
         didSet {
             statusHandler?(mapDownloadStatus)
@@ -30,12 +29,6 @@ final class Region: Hashable, Comparable {
         self.downloadPrefix = downloadPrefix
         self.subregions = subregions
         self.mapDownloadStatus = mapDownloadStatus
-    }
-
-    // MARK: - Computed properties
-
-    var fileName: String {
-        downloadPrefix + downloadSuffix
     }
 }
 

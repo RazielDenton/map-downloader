@@ -7,6 +7,10 @@
 
 import Foundation
 
+private extension String {
+    static let currentDownloadFileNameKey = "currentDownloadFileName"
+}
+
 final class FileDownloader: NSObject {
 
     static let shared = FileDownloader()
@@ -31,8 +35,10 @@ final class FileDownloader: NSObject {
 
     var backgroundURLSessionCompletion: (() -> Void)?
 
-    func downloadMap(with urlRequest: URLRequest, progressHandler: ((Double) -> Void)?) async throws {
+    func download(with urlRequest: URLRequest, fileName: String, progressHandler: ((Double) -> Void)?) async throws {
         self.progressHandler = progressHandler
+
+        UserDefaults.standard.set(fileName, forKey: .currentDownloadFileNameKey)
 
         try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
@@ -89,9 +95,8 @@ extension FileDownloader: URLSessionDownloadDelegate {
         do {
             let fileManager = FileManager.default
             let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let destinationURL = documentsURL.appendingPathComponent(
-                downloadTask.originalRequest?.url?.lastPathComponent ?? "downloadedFile"
-            )
+            let fileName = UserDefaults.standard.string(forKey: .currentDownloadFileNameKey) ?? "downloadedFile"
+            let destinationURL = documentsURL.appendingPathComponent(fileName)
 
             if fileManager.fileExists(atPath: destinationURL.path) {
                 try fileManager.removeItem(at: destinationURL)

@@ -7,6 +7,10 @@
 
 import Foundation
 
+private extension String {
+    static let fileNameDownloadSuffix: String = "_europe_2.obf.zip"
+}
+
 actor MapsController {
 
     private let fileDownloader: FileDownloader
@@ -41,10 +45,11 @@ extension MapsController {
         guard
             let path = Bundle.main.url(forResource: "regions", withExtension: "xml"),
             let data = try? Data(contentsOf: path),
-            let regions = parser.parseXML(data: data),
+            let (regions, regionsByDownloadPrefix) = parser.parseXML(data: data),
             let continent = regions.first
         else { return nil }
 
+        checkDownloadedMaps(using: regionsByDownloadPrefix)
         let filteredRegions: [Region] = continent.subregions.sorted(by: <)
 
         return Region(name: continent.name, subregions: filteredRegions)
@@ -95,11 +100,12 @@ private extension MapsController {
     func download(_ region: Region) async {
         do {
             print("Downloading: \(region.name)")
+            let fileName = region.downloadPrefix + .fileNameDownloadSuffix
             let request = URLRequest(
                 path: "download",
-                queryItemsParameters: ["standard": "yes", "file": region.fileName]
+                queryItemsParameters: ["standard": "yes", "file": fileName]
             )
-            try await fileDownloader.downloadMap(with: request) { [weak region] progress in
+            try await fileDownloader.download(with: request, fileName: fileName) { [weak region] progress in
                 print("Download progress: \(Int(progress * 100))%")
                 if let region {
                     region.mapDownloadStatus = .downloading(progress)
@@ -110,6 +116,25 @@ private extension MapsController {
             region.mapDownloadStatus = .downloaded
         } catch {
             print("Error occurred while loading the \(region.name) map: \(error)")
+        }
+    }
+
+    func checkDownloadedMaps(using regionsByDownloadPrefix: [String: Region]) {
+        let fileManager = FileManager.default
+        let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+
+        do {
+            let fileURLs = try fileManager.contentsOfDirectory(at: documentsURL, includingPropertiesForKeys: nil)
+
+            let fileNames = fileURLs.map { $0.lastPathComponent }
+            fileNames.forEach {
+                let downloadPrefix = $0.replacingOccurrences(of: String.fileNameDownloadSuffix, with: "")
+                if let region = regionsByDownloadPrefix[downloadPrefix] {
+                    region.mapDownloadStatus = .downloaded
+                }
+            }
+        } catch {
+            print("Error occurred while performing a shallow search of the documents directory: \(error)")
         }
     }
 }
