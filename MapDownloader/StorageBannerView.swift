@@ -53,7 +53,7 @@ extension StorageBannerView {
 private extension StorageBannerView {
 
     func setup() {
-        backgroundColor = .white
+        backgroundColor = .systemBackground
 
         titleLabel.text = String(localized: "Device memory")
         titleLabel.font = .preferredFont(forTextStyle: .footnote)
