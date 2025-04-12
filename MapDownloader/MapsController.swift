@@ -52,6 +52,7 @@ extension MapsController {
             let continent = regions.first
         else { return nil }
 
+        await restorePossibleDownloadProgress(using: regionsByDownloadPrefix)
         checkDownloadedMaps(using: regionsByDownloadPrefix)
         let filteredRegions: [Region] = continent.subregions.sorted(by: <)
 
@@ -87,8 +88,8 @@ private extension MapsController {
 
     func cancel(_ region: Region) {
         if case .downloading = region.mapDownloadStatus {
-            fileDownloader.cancelDownload()
             currentDownloadTask?.cancel()
+            fileDownloader.cancelDownload()
             isDownloading = false
             processQueue()
         } else if let index = regionsToDownload.firstIndex(where: { $0.name == region.name }) {
@@ -103,12 +104,10 @@ private extension MapsController {
         isDownloading = true
         let nextRegion = regionsToDownload.removeFirst()
 
-        currentDownloadTask = Task {
-            await download(nextRegion)
+        currentDownloadTask = Task { [weak self] in
+            await self?.download(nextRegion)
             try Task.checkCancellation()
-            isDownloading = false
-            onMapDownloadFinished?()
-            processQueue()
+            await self?.handleDownloadCompletion()
         }
     }
 
@@ -120,9 +119,10 @@ private extension MapsController {
                 path: "download",
                 queryItemsParameters: ["standard": "yes", "file": fileName]
             )
+            region.mapDownloadStatus = .downloading(0)
             try await fileDownloader.download(with: request, fileName: fileName) { [weak region] progress in
                 print("Download progress: \(Int(progress * 100))%")
-                if let region {
+                if let region, !Task.isCancelled {
                     region.mapDownloadStatus = .downloading(progress)
                 }
             }
@@ -130,17 +130,19 @@ private extension MapsController {
             print("Finished: \(region.name)")
             region.mapDownloadStatus = .downloaded
         } catch {
-            print("Error occurred while loading the \(region.name) map: \(error)")
+            print("Error occurred while downloading the \(region.name) map: \(error)")
         }
     }
 
-    func checkDownloadedMaps(using regionsByDownloadPrefix: [String: Region]) {
-        let fileManager = FileManager.default
-        let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    func handleDownloadCompletion() async {
+        isDownloading = false
+        onMapDownloadFinished?()
+        processQueue()
+    }
 
+    func checkDownloadedMaps(using regionsByDownloadPrefix: [String: Region]) {
         do {
             let fileURLs = try fileManager.contentsOfDirectory(at: documentsURL, includingPropertiesForKeys: nil)
-
             let fileNames = fileURLs.map { $0.lastPathComponent }
             fileNames.forEach {
                 let downloadPrefix = $0.replacingOccurrences(of: String.fileNameDownloadSuffix, with: "")
@@ -150,6 +152,41 @@ private extension MapsController {
             }
         } catch {
             print("Error occurred while performing a shallow search of the documents directory: \(error)")
+        }
+    }
+
+    func restorePossibleDownloadProgress(using regionsByDownloadPrefix: [String: Region]) async {
+        guard
+            let downloadTask = await fileDownloader.currentDownloadTask,
+            let url = downloadTask.originalRequest?.url,
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+            let queryItems = components.queryItems,
+            let fileName = queryItems.first(where: { $0.name == "file" })?.value
+        else { return }
+
+        let downloadPrefix = fileName.replacingOccurrences(of: String.fileNameDownloadSuffix, with: "")
+        if let region = regionsByDownloadPrefix[downloadPrefix] {
+            print("Found \(region.name) map that is currently downloading")
+            isDownloading = true
+            region.mapDownloadStatus = .downloading(0)
+            currentDownloadTask = Task { [weak self, weak region] in
+                do {
+                    try await self?.fileDownloader.restoreDownloadCallbacks(for: downloadTask) { [weak region] progress in
+                        print("New download progress: \(Int(progress * 100))%")
+                        if let region, !Task.isCancelled {
+                            region.mapDownloadStatus = .downloading(progress)
+                        }
+                    }
+                    try Task.checkCancellation()
+                    if let region {
+                        print("Finished: \(region.name)")
+                        region.mapDownloadStatus = .downloaded
+                    }
+                    await self?.handleDownloadCompletion()
+                } catch {
+                    print("Error occurred while downloading \(fileName) file: \(error)")
+                }
+            }
         }
     }
 }

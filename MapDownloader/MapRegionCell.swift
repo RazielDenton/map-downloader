@@ -41,6 +41,7 @@ final class MapRegionCell: UITableViewCell {
         super.prepareForReuse()
 
         region?.statusHandler = nil
+        progressBar.setProgress(0, animated: false)
         region = nil
     }
 }
@@ -109,6 +110,7 @@ private extension MapRegionCell {
         mapNameLabel.adjustsFontForContentSizeCategory = true
 
         progressBar.isHidden = true
+        progressBar.progressTintColor = .accent
 
         button.setImage(.download, for: .normal)
         button.addAction(UIAction { [weak self] _ in

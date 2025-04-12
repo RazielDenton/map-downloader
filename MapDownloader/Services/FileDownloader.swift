@@ -35,6 +35,12 @@ final class FileDownloader: NSObject {
 
     var backgroundURLSessionCompletion: (() -> Void)?
 
+    var currentDownloadTask: URLSessionDownloadTask? {
+        get async {
+            await session.allTasks.compactMap { $0 as? URLSessionDownloadTask }.first
+        }
+    }
+
     func download(with urlRequest: URLRequest, fileName: String, progressHandler: ((Double) -> Void)?) async throws {
         self.progressHandler = progressHandler
 
@@ -52,6 +58,18 @@ final class FileDownloader: NSObject {
         continuation?.resume(throwing: FileDownloaderError.downloadCanceled)
         cleanup()
     }
+
+    func restoreDownloadCallbacks(
+        for downloadTask: URLSessionDownloadTask,
+        progressHandler: ((Double) -> Void)?
+    ) async throws {
+        continuation?.resume(throwing: FileDownloaderError.unknown) // in case MapsController was deallocated
+        try await withCheckedThrowingContinuation { continuation in
+            self.downloadTask = downloadTask
+            self.continuation = continuation
+            self.progressHandler = progressHandler
+        }
+    }
 }
 
 // MARK: - Private
@@ -60,7 +78,7 @@ private extension FileDownloader {
 
     func makeBackgroundURLSession() -> URLSession {
         let configuration = URLSessionConfiguration.background(withIdentifier: "com.MapDownloader.background.download")
-        configuration.isDiscretionary = true
+        configuration.isDiscretionary = false
 
         return URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
     }
@@ -84,9 +102,7 @@ extension FileDownloader: URLSessionDownloadDelegate {
         totalBytesExpectedToWrite: Int64
     ) {
         let progress = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
-        DispatchQueue.main.async {
-            self.progressHandler?(progress)
-        }
+        progressHandler?(progress)
     }
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
@@ -111,13 +127,12 @@ extension FileDownloader: URLSessionDownloadDelegate {
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
-        defer { cleanup() }
-
         if let error = error as? NSError, error.code == NSURLErrorCancelled {
             return
+        } else if let error {
+            continuation?.resume(throwing: error)
+            cleanup()
         }
-
-        continuation?.resume(throwing: error ?? FileDownloaderError.unknown)
     }
 
     func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {

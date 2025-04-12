@@ -86,8 +86,8 @@ private extension MapListFlowController {
     }
 
     func setupStorageInfoUpdates() {
-        Task {
-            await mapsController.setOnMapDownloadFinished { [weak self] in
+        Task { [weak self] in
+            await self?.mapsController.setOnMapDownloadFinished { [weak self] in
                 self?.updateStorageInfo()
             }
         }
@@ -100,10 +100,10 @@ private extension MapListFlowController {
     }
 
     func updateStorageInfo() {
-        DispatchQueue.main.async {
-            self.storageBannerView.updateIndicators(
-                availableDiskSpace: self.diskSpaceService.availableDiskSpaceString(),
-                usageRatio: self.diskSpaceService.usageRatio()
+        DispatchQueue.main.async { [self] in
+            storageBannerView.updateIndicators(
+                availableDiskSpace: diskSpaceService.availableDiskSpaceString(),
+                usageRatio: diskSpaceService.usageRatio()
             )
         }
     }
