@@ -115,12 +115,42 @@ private extension MapListViewController {
 // MARK: - UITableViewDelegate
 
 extension MapListViewController: UITableViewDelegate {
-    
+
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
 
         guard let region = dataSource.itemIdentifier(for: indexPath), !region.subregions.isEmpty else { return }
 
         onCellTap?(region)
+    }
+
+    func tableView(
+        _ tableView: UITableView,
+        trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath
+    ) -> UISwipeActionsConfiguration? {
+        let deleteAction = UIContextualAction(style: .destructive, title: nil) { [unowned self] _, _, completion in
+            guard let region = dataSource.itemIdentifier(for: indexPath) else { return }
+
+            let alert = UIAlertController(
+                title: String(localized: "Delete map"),
+                message: String(localized: "Are you sure you want to delete the map for \(region.name.capitalized)?"),
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: String(localized: "Cancel"), style: .cancel, handler: { _ in
+                completion(false)
+            }))
+            alert.addAction(UIAlertAction(title: String(localized: "Delete"), style: .destructive, handler: { _ in
+                completion(true)
+                Task { [weak region, weak self] in
+                    if let region {
+                        await self?.mapsController.deleteMap(for: region)
+                    }
+                }
+            }))
+            present(alert, animated: true)
+        }
+        deleteAction.image = UIImage(systemName: "trash")
+
+        return UISwipeActionsConfiguration(actions: [deleteAction])
     }
 }

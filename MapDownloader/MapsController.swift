@@ -19,6 +19,9 @@ actor MapsController {
     private var isDownloading = false
     private var onMapDownloadFinished: (() -> Void)?
 
+    private let fileManager = FileManager.default
+    private var documentsURL: URL { fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0] }
+
     init(fileDownloader: FileDownloader = .shared) {
         self.fileDownloader = fileDownloader
     }
@@ -57,6 +60,18 @@ extension MapsController {
 
     func setOnMapDownloadFinished(_ completionHandler: (() -> Void)?) {
         onMapDownloadFinished = completionHandler
+    }
+
+    func deleteMap(for region: Region) {
+        do {
+            let fileName = region.downloadPrefix + .fileNameDownloadSuffix
+            let destinationURL = documentsURL.appendingPathComponent(fileName)
+            try fileManager.removeItem(at: destinationURL)
+            region.mapDownloadStatus = .available
+            onMapDownloadFinished?()
+        } catch {
+            print("Error occurred while removing the \(region.name) map: \(error)")
+        }
     }
 }
 
