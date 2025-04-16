@@ -1,0 +1,36 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Are you sure you want to delete the map for %@?" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete map" : {
+
+    },
+    "Device memory" : {
+
+    },
+    "Download Maps" : {
+
+    },
+    "Free" : {
+
+    },
+    "Regions" : {
+
+    },
+    "Show the map list" : {
+
+    },
+    "Undefined" : {
+
+    }
+  },
+  "version" : "1.0"
+}

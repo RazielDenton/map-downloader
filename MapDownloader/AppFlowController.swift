@@ -26,7 +26,7 @@ private extension AppFlowController {
         startViewController.view.backgroundColor = .systemBackground
 
         let showMapListButton: UIButton = .init(type: .system)
-        showMapListButton.setTitle("Show the map list", for: .normal)
+        showMapListButton.setTitle(String(localized: "Show the map list"), for: .normal)
         showMapListButton.addAction(UIAction(handler: { [weak self] _ in
             self?.showMapListScreen()
         }), for: .touchUpInside)
